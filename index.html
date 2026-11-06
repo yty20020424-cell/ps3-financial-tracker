@@ -1,462 +1,469 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>US Treasury | Fixed Income Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
+:root {
+  color-scheme: dark;
+  --bg: #0b1220;
+  --panel: #18243a;
+  --line: #30415c;
+  --text: #eaf0fa;
+  --muted: #9fb0ca;
+  --aqua: #75dccb;
+  --blue: #7caaff;
+  --amber: #f3bd76;
+}
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: #0b1220;
-  color: #e5eaf4;
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.55 system-ui, sans-serif;
 }
 header {
-  padding: 28px 7%;
-  border-bottom: 1px solid #263247;
   background: #111c30;
+  border-bottom: 1px solid var(--line);
+  padding: 40px max(24px, calc((100% - 1100px)/2));
 }
-header h1 { margin: 0; font-size: 27px; }
-header p { color: #9aaac0; }
-main { max-width: 1250px; margin: auto; padding: 30px 20px; }
-h2 { font-size: 20px; margin-top: 0; }
-.subtitle { color: #91a4be; font-size: 13px; }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3,1fr);
-  gap: 18px;
-  margin-bottom: 22px;
+h1 {
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.15;
+  margin: 0 0 13px;
 }
-.card {
-  background: #152238;
-  border: 1px solid #2a3951;
-  border-radius: 12px;
-  padding: 23px;
+h2 { font-size: 23px; margin: 0 0 9px; }
+p { margin: 8px 0; }
+header p, .muted { color: var(--muted); }
+main {
+  max-width: 1150px;
+  margin: auto;
+  padding: 30px 22px 60px;
 }
-.metric { font-size: 30px; font-weight: bold; color: #63d5c5; }
-.chart-card { margin-bottom: 22px; }
-.chart-wrap { height: 310px; position: relative; }
-.two {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
 }
-select, button {
-  background: #233750;
-  color: white;
-  padding: 10px 15px;
-  border: 1px solid #405571;
-  border-radius: 7px;
+button, select {
+  font: inherit;
+  background: #243651;
+  color: var(--text);
+  border: 1px solid #4a6285;
+  border-radius: 10px;
+  padding: 11px 13px;
   cursor: pointer;
 }
-.controls { margin: 15px 0 25px; display: flex; gap: 12px; }
-.analysis {
-  line-height: 1.8;
-  color: #d6e0ee;
+button:hover { background: #354d70; }
+#status {
+  margin: 10px 0 22px;
+  color: var(--amber);
+  min-height: 25px;
 }
-.highlight { color: #63d5c5; font-weight: bold; }
-.status { color: #eebc73; font-size: 13px; margin: 12px 0; }
-a { color: #77baff; }
-footer { color: #8596ac; font-size: 12px; padding: 25px 7%; }
-@media(max-width:750px) {
-  .grid,.two { grid-template-columns: 1fr; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.card, .chart-card, .analysis {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  padding: 20px;
+}
+.label { color: var(--muted); font-size: 14px; }
+.value {
+  font-size: clamp(22px, 2.7vw, 32px);
+  font-weight: 750;
+  margin-top: 12px;
+}
+.small { font-size: 12px; color: var(--muted); }
+.charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 17px;
+  margin-top: 23px;
+}
+.chart-card { min-width: 0; }
+svg { display: block; width: 100%; height: auto; }
+svg text { font-size: 12px; fill: var(--muted); }
+.analysis { margin-top: 22px; }
+.analysis strong { color: var(--aqua); }
+a { color: var(--aqua); }
+.foot {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+@media (max-width: 850px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+  .charts { grid-template-columns: 1fr; }
+}
+@media (max-width: 460px) {
+  .card { padding: 14px; }
+  .chart-card, .analysis { padding: 16px; }
+  .value { font-size: 22px; }
 }
 </style>
 </head>
-
 <body>
+
 <header>
-<h1>US Treasury | Fixed Income Dashboard</h1>
-<p>10-Year Treasury Duration, Term Premium & Equity Market Analysis</p>
+  <h1>US Treasury | Fixed Income Dashboard</h1>
+  <p>10-Year Treasury Duration, Term Premium &amp; Equity Market Analysis</p >
 </header>
 
 <main>
-<div class="controls">
-<select id="period">
-<option value="3">Last 3 Years</option>
-<option value="5" selected>Last 5 Years</option>
-<option value="10">Last 10 Years</option>
-</select>
-<button onclick="loadDashboard()">Refresh Data</button>
-</div>
+  <div class="controls">
+    <label for="period">Historical period:</label>
+    <select id="period">
+      <option value="3">Last 3 Years</option>
+      <option value="5" selected>Last 5 Years</option>
+      <option value="all">All Available Data</option>
+    </select>
+    <button id="refresh" type="button">Refresh Data</button>
+  </div>
 
-<p class="status" id="status">Loading historical market data...</p>
+  <p id="status" role="status">Loading historical market data...</p >
 
-<div class="grid">
-<div class="card">
-<p class="subtitle">10-Year Treasury Yield</p>
-<div class="metric" id="yield">--</div>
-<p class="subtitle">Latest available observation</p>
-</div>
+  <section class="grid">
+    <div class="card">
+      <div class="label">10-Year Treasury Yield</div>
+      <div class="value" id="yield">--</div>
+      <div class="small">Percent per year</div>
+    </div>
 
-<div class="card">
-<p class="subtitle">10-Year Modified Duration</p>
-<div class="metric" id="duration">--</div>
-<p class="subtitle">Years | Model-based estimate</p>
-</div>
+    <div class="card">
+      <div class="label">10-Year Modified Duration</div>
+      <div class="value" id="duration">--</div>
+      <div class="small">Years | Model-based estimate</div>
+    </div>
 
-<div class="card">
-<p class="subtitle">10-Year Term Premium</p>
-<div class="metric" id="premium">--</div>
-<p class="subtitle" id="premiumSource">NY Fed ACM estimate</p>
-</div>
-</div>
+    <div class="card">
+      <div class="label">10-Year ACM Term Premium</div>
+      <div class="value" id="premium">--</div>
+      <div class="small">Percentage points</div>
+    </div>
 
-<div class="card chart-card">
-<h2>Treasury Bond Duration Over Time</h2>
-<p class="subtitle">Estimated modified duration of a hypothetical 10-year par Treasury bond</p>
-<div class="chart-wrap"><canvas id="durationChart"></canvas></div>
-</div>
+    <div class="card">
+      <div class="label">S&amp;P 500 Index</div>
+      <div class="value" id="stocks">--</div>
+      <div class="small">Index level</div>
+    </div>
+  </section>
 
-<div class="card chart-card">
-<h2>10-Year Treasury Term Premium</h2>
-<p class="subtitle">Historical term-premium estimates, percentage points</p>
-<div class="chart-wrap"><canvas id="premiumChart"></canvas></div>
-</div>
+  <section class="charts">
+    <div class="chart-card">
+      <h2>Treasury Modified Duration</h2>
+      <p class="muted">Estimated 10-year Treasury bond duration (years)</p >
+      <div id="durationChart"></div>
+    </div>
 
-<div class="card chart-card">
-<h2>10-Year Treasury Yield</h2>
-<p class="subtitle">Historical Treasury constant-maturity yield</p>
-<div class="chart-wrap"><canvas id="yieldChart"></canvas></div>
-</div>
+    <div class="chart-card">
+      <h2>10-Year Term Premium</h2>
+      <p class="muted">New York Fed ACM model (percentage points)</p >
+      <div id="premiumChart"></div>
+    </div>
 
-<div class="card chart-card">
-<h2>S&P 500 Equity Market</h2>
-<p class="subtitle">Historical index levels from FRED</p>
-<div class="chart-wrap"><canvas id="stockChart"></canvas></div>
-</div>
+    <div class="chart-card">
+      <h2>10-Year Treasury Yield</h2>
+      <p class="muted">10-year Treasury yield (%)</p >
+      <div id="yieldChart"></div>
+    </div>
 
-<div class="card">
-<h2>Term Premium and Equity Market Analysis</h2>
-<p class="subtitle">Comparison window: September 2024 to January 2025</p>
-<div class="two">
-<div>
-<p>Change in 10-Year Term Premium</p>
-<div class="metric" id="tpChange">--</div>
-<p class="subtitle">Basis points</p>
-</div>
-<div>
-<p>S&P 500 Return</p>
-<div class="metric" id="stockReturn">--</div>
-<p class="subtitle">Percentage return over the same window</p>
-</div>
-</div>
-<p class="analysis" id="analysis">
-Historical comparison will appear after the data loads.
-</p>
-</div>
+    <div class="chart-card">
+      <h2>S&amp;P 500 Index</h2>
+      <p class="muted">US equity market index</p >
+      <div id="stocksChart"></div>
+    </div>
+  </section>
 
-<div class="card" style="margin-top:22px">
-<h2>Methodology</h2>
-<p class="analysis">
-Duration is calculated for a hypothetical 10-year, semiannual-coupon
-Treasury bond issued at par. The annual coupon rate is set equal
-to the observed 10-year Treasury yield on each observation date.
-For 20 semiannual periods, the present-value-weighted average
-cash-flow time gives Macaulay duration.
-Modified duration equals Macaulay duration divided by (1 + y/2),
-where y is the annual yield expressed as a decimal.
-</p>
-<p class="analysis">
-This provides a consistent model-based duration estimate across
-historical dates. It is not the observed duration of a specific
-outstanding Treasury security.
-</p>
-<p class="analysis">
-Term premium measures the compensation investors require for
-bearing interest-rate risk. ACM estimates are based on the
-Federal Reserve Bank of New York's model. If ACM data cannot be
-retrieved, the dashboard attempts to use the alternative
-Kim-Wright estimate, with the source label changed accordingly.
-</p>
-<p class="analysis">
-The market comparison is descriptive and does not establish
-that a change in the term premium caused an equity-market move.
-</p>
-</div>
+  <section class="analysis">
+    <h2>Market Comparison: Term Premium vs S&amp;P 500</h2>
+    <p id="analysis">Analysis will appear after data loads.</p >
+    <p class="small" id="window"></p >
+    <p class="muted">
+      This is a descriptive comparison of observed market changes,
+      not evidence of causation.
+    </p >
+  </section>
 
-<div class="card" style="margin-top:22px">
-<h2>Data Sources</h2>
-<p class="analysis">
-<a href="https://www.newyorkfed.org/research/data_indicators/term-premia-tabs" target="_blank">
-Federal Reserve Bank of New York - ACM Term Premium
-</a><br>
-<a href="https://fred.stlouisfed.org/series/DGS10" target="_blank">
-FRED - 10-Year Treasury Yield (DGS10)
-</a><br>
-<a href="https://fred.stlouisfed.org/series/SP500" target="_blank">
-FRED - S&P 500 (SP500)
-</a><br>
-<a href="https://fred.stlouisfed.org/series/THREEFYTP10" target="_blank">
-FRED - Kim-Wright Term Premium (THREEFYTP10)
-</a>
-</p>
-<p class="subtitle" id="updated">Data as of: --</p>
-</div>
+  <section class="analysis">
+    <h2>Methodology &amp; Data Sources</h2>
+    <p>
+      <strong>Duration:</strong> Calculated as the modified duration
+      of a hypothetical 10-year Treasury bond with semiannual coupons,
+      face value of 100, and coupon rate equal to the observed
+      10-year Treasury yield. The bond is assumed to trade at par.
+      This is a model-based duration estimate, not the duration
+      of one specific Treasury security held through time.
+    </p >
+    <p>
+      <strong>Term Premium:</strong> New York Fed ACM 10-year
+      term premium estimates.
+    </p >
+    <p>
+      <strong>Market Analysis:</strong>
+      Term Premium Change = (End - Start) x 100 basis points.
+      S&amp;P 500 Return = (End / Start - 1) x 100%.
+    </p >
+    <p>
+      Data sources:
+      <a href=" ">
+        New York Fed ACM
+      </a > |
+      <a href="https://fred.stlouisfed.org/series/DGS10">
+        Treasury Yield
+      </a > |
+      <a href="https://fred.stlouisfed.org/series/SP500">
+        S&amp;P 500
+      </a >
+    </p >
+    <p class="small" id="updated"></p >
+  </section>
 </main>
 
-<footer>
-Fixed Income Research Dashboard | Educational Project
-</footer>
-
 <script>
-Chart.defaults.color = "#a6b6ca";
-Chart.defaults.borderColor = "#304058";
+"use strict";
 
-const charts = {};
-let marketData = null;
-let premiumModel = "NY Fed ACM";
+let allRows = [];
 
-function parseCSV(text, dateCol, valueCol) {
-  const lines = text.trim().replace(/\r/g, "").split("\n");
-  const headers = lines.shift().split(",").map(x => x.trim().replace(/"/g, ""));
-  const di = headers.indexOf(dateCol);
-  const vi = headers.indexOf(valueCol);
-  if(di < 0 || vi < 0) throw new Error("Missing CSV columns");
-  return lines.map(line => {
-    const c = line.split(",");
-    const date = c[di]?.replace(/"/g, "").trim();
-    const value = Number(c[vi]);
-    return { date, value };
-  }).filter(x =>
-    /^\d{4}-\d{2}-\d{2}$/.test(x.date) &&
-    Number.isFinite(x.value) &&
-    x.value !== 0 || false
-  ).sort((a,b) => a.date.localeCompare(b.date));
-}
+const $ = id => document.getElementById(id);
 
-async function fetchText(url) {
-  const attempts = [
-    url,
-    "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
-    "https://corsproxy.io/?" + encodeURIComponent(url)
-  ];
-  for(const endpoint of attempts) {
-    try {
-      const response = await fetch(endpoint, {cache:"no-store"});
-      if(!response.ok) continue;
-      const text = await response.text();
-      if(text.includes(",") && !text.trim().startsWith("<"))
-        return text;
-    } catch(e) {}
-  }
-  throw new Error("Could not retrieve " + url);
-}
-
-async function fred(id) {
-  const url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id="
-    + encodeURIComponent(id) + "&cosd=2015-01-01";
-  const csv = await fetchText(url);
-  const firstLine = csv.trim().split("\n")[0].replace(/\r/g,"");
-  const dateColumn = firstLine.split(",")[0].replace(/"/g,"").trim();
-  return parseCSV(csv, dateColumn, id);
-}
-
-async function getPremium() {
-  try {
-    const csv = await fetchText(
-      "https://eco3min.fr/dataset/us-term-premium.csv"
-    );
-    const data = parseCSV(csv, "date", "term_premium_10y");
-    if(data.length < 24) throw new Error("Insufficient ACM data");
-    premiumModel = "NY Fed ACM (monthly)";
-    return data;
-  } catch(e) {
-    const data = await fred("THREEFYTP10");
-    premiumModel = "Kim-Wright (FRED)";
-    return data;
-  }
-}
-
-function modifiedDuration(yieldPercent) {
-  const y = yieldPercent / 100;
-  const semiRate = y / 2;
-  const coupon = 100 * semiRate;
-  let pv = 0, weighted = 0;
-  for(let t = 1; t <= 20; t++) {
-    const cashFlow = coupon + (t === 20 ? 100 : 0);
-    const presentValue = cashFlow / Math.pow(1 + semiRate, t);
-    pv += presentValue;
-    weighted += (t / 2) * presentValue;
-  }
-  return (weighted / pv) / (1 + semiRate);
-}
-
-function monthly(data) {
-  const map = new Map();
-  data.forEach(d => map.set(d.date.slice(0,7), d));
-  return [...map.entries()].map(([month,d]) => ({
-    date: month, value: d.value
-  })).sort((a,b) => a.date.localeCompare(b.date));
-}
-
-function cutoff(months) {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - months);
-  return d.toISOString().slice(0,7);
-}
-
-function filtered(data, years) {
-  const min = cutoff(years);
-  return data.filter(d => d.date >= min);
-}
-
-function makeChart(id, series, color, suffix) {
-  if(charts[id]) charts[id].destroy();
-  charts[id] = new Chart(document.getElementById(id), {
-    type:"line",
-    data:{
-      labels:series.map(d => d.date),
-      datasets:[{
-        label:id.replace("Chart",""),
-        data:series.map(d => d.value),
-        borderColor:color,
-        backgroundColor:color+"22",
-        fill:true,
-        borderWidth:2,
-        pointRadius:0,
-        tension:0.2,
-        spanGaps:true
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      interaction:{mode:"index",intersect:false},
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          callbacks:{
-            label:c => Number(c.raw).toFixed(2)+suffix
-          }
-        }
-      },
-      scales:{
-        x:{
-          ticks:{maxTicksLimit:9,maxRotation:0}
-        },
-        y:{title:{display:true,text:suffix.trim()}}
-      }
-    }
+function nf(x, d = 2) {
+  return Number(x).toLocaleString("en-US", {
+    minimumFractionDigits: d,
+    maximumFractionDigits: d
   });
 }
 
-function byMonth(data, month) {
-  return monthly(data).find(d => d.date === month);
-}
+function duration(yieldPct) {
+  const n = 20;
+  const face = 100;
+  const r = yieldPct / 200;
+  const coupon = face * r;
 
-function calculateAnalysis() {
-  const start = "2024-09";
-  const end = "2025-01";
-  const p0 = byMonth(marketData.premium,start);
-  const p1 = byMonth(marketData.premium,end);
-  const s0 = byMonth(marketData.stocks,start);
-  const s1 = byMonth(marketData.stocks,end);
+  let price = 0;
+  let weighted = 0;
 
-  if(!p0 || !p1 || !s0 || !s1) {
-    document.getElementById("analysis").textContent =
-      "The data source does not contain enough observations for this comparison.";
-    return;
+  for (let t = 1; t <= n; t++) {
+    const cf = coupon + (t === n ? face : 0);
+    const pv = cf / Math.pow(1 + r, t);
+    price += pv;
+    weighted += (t / 2) * pv;
   }
 
-  const premiumChange = (p1.value - p0.value)*100;
-  const stockReturn = (s1.value/s0.value-1)*100;
-  const direction = premiumChange >= 0 ? "increased" : "decreased";
-  const equityDirection = stockReturn >= 0 ? "rose" : "fell";
+  return weighted / price / (1 + r);
+}
 
-  document.getElementById("tpChange").textContent =
-    (premiumChange>=0?"+":"") + premiumChange.toFixed(1)+" bps";
-  document.getElementById("stockReturn").textContent =
-    (stockReturn>=0?"+":"") + stockReturn.toFixed(2)+"%";
+function parseRows(data) {
+  if (!data || !Array.isArray(data.rows)) {
+    throw new Error("data.json missing rows array");
+  }
 
-  document.getElementById("analysis").innerHTML =
-    "Between September 2024 and January 2025, the 10-year Treasury " +
-    "term premium (" + premiumModel + ") <span class='highlight'>" +
-    direction + " by " + Math.abs(premiumChange).toFixed(1) +
-    " basis points</span>, moving from " +
-    p0.value.toFixed(2) + "% to " + p1.value.toFixed(2) +
-    "%. Over the same period, the S&P 500 <span class='highlight'>" +
-    equityDirection + " by " + Math.abs(stockReturn).toFixed(2) +
-    "%</span>, from " + s0.value.toFixed(2) +
-    " to " + s1.value.toFixed(2) +
-    ". A higher term premium generally raises long-term discount rates, " +
-    "which can create valuation pressure on equities. However, stock " +
-    "prices also respond to corporate earnings, growth expectations, " +
-    "and other economic information. This comparison documents the " +
-    "observed co-movement rather than demonstrating causality. " +
-    "Both series use the final available observation in each month.";
+  const rows = data.rows.map(r => ({
+    month: String(r.month || ""),
+    yield10: Number(r.yield10),
+    termPremium: Number(r.termPremium),
+    sp500: Number(r.sp500)
+  }))
+  .filter(r =>
+    /^\d{4}-\d{2}$/.test(r.month) &&
+    Number.isFinite(r.yield10) &&
+    Number.isFinite(r.termPremium) &&
+    Number.isFinite(r.sp500) &&
+    r.sp500 > 0 &&
+    r.yield10 >= 0
+  )
+  .sort((a, b) => a.month.localeCompare(b.month));
+
+  if (rows.length < 24) {
+    throw new Error("Insufficient historical observations");
+  }
+
+  return rows;
+}
+
+function selectedRows() {
+  const period = $("period").value;
+
+  if (period === "all") return allRows;
+
+  const last = allRows[allRows.length - 1].month;
+  const [year, month] = last.split("-").map(Number);
+
+  const cutoff = `${year - Number(period)}-${String(month).padStart(2, "0")}`;
+
+  return allRows.filter(r => r.month >= cutoff);
+}
+
+function drawLine(containerId, rows, key, color) {
+  const w = 520, h = 280;
+  const l = 59, r = 16, t = 22, b = 40;
+
+  const pw = w - l - r;
+  const ph = h - t - b;
+
+  const vals = rows.map(d =>
+    key === "duration" ? duration(d.yield10) : d[key]
+  );
+
+  const rawMin = Math.min(...vals);
+  const rawMax = Math.max(...vals);
+  const margin = Math.max((rawMax - rawMin) * 0.12, 0.03);
+
+  const min = rawMin - margin;
+  const max = rawMax + margin;
+  const span = max - min;
+
+  const X = i => l + i * pw / (rows.length - 1);
+  const Y = v => t + ph - (v - min) / span * ph;
+
+  const path = vals.map((v, i) =>
+    `${i ? "L" : "M"} ${X(i).toFixed(2)} ${Y(v).toFixed(2)}`
+  ).join(" ");
+
+  let html = `<svg viewBox="0 0 ${w} ${h}" role="img">`;
+
+  for (let i = 0; i <= 4; i++) {
+    const v = min + span * i / 4;
+    const yy = Y(v);
+
+    html += `
+      <line x1="${l}" y1="${yy}" x2="${w-r}" y2="${yy}"
+      stroke="#34445e" stroke-dasharray="4 5"/>
+      <text x="${l-8}" y="${yy+4}" text-anchor="end">
+      ${nf(v)}
+      </text>`;
+  }
+
+  const ticks = [
+    0,
+    Math.floor((rows.length - 1) / 2),
+    rows.length - 1
+  ];
+
+  for (const i of ticks) {
+    html += `
+      <text x="${X(i)}" y="${h-13}" text-anchor="middle">
+      ${rows[i].month}
+      </text>`;
+  }
+
+  if (min < 0 && max > 0) {
+    html += `
+      <line x1="${l}" y1="${Y(0)}" x2="${w-r}" y2="${Y(0)}"
+      stroke="#a1adc0"/>`;
+  }
+
+  html += `
+    <path d="${path}" fill="none" stroke="${color}"
+    stroke-width="3" stroke-linecap="round"
+    stroke-linejoin="round"/>`;
+
+  rows.forEach((row, i) => {
+    html += `
+      <circle cx="${X(i)}" cy="${Y(vals[i])}"
+      r="7" fill="transparent">
+      <title>${row.month}: ${nf(vals[i], 3)}</title>
+      </circle>`;
+  });
+
+  html += "</svg>";
+
+  $(containerId).innerHTML = html;
 }
 
 function render() {
-  const years = Number(document.getElementById("period").value);
+  if (!allRows.length) return;
 
-  const yields = monthly(marketData.yields);
-  const duration = yields.map(d => ({
-    date:d.date,
-    value:modifiedDuration(d.value)
-  }));
-  const premium = monthly(marketData.premium);
-  const stocks = monthly(marketData.stocks);
+  const rows = selectedRows();
+  const latest = rows[rows.length - 1];
 
-  makeChart("durationChart",filtered(duration,years),"#4edac6"," years");
-  makeChart("premiumChart",filtered(premium,years),"#e5b46f","%");
-  makeChart("yieldChart",filtered(yields,years),"#70aaff","%");
-  makeChart("stockChart",filtered(stocks,years),"#bc91ff","");
+  $("yield").textContent = nf(latest.yield10) + "%";
+  $("duration").textContent = nf(duration(latest.yield10)) + " years";
+  $("premium").textContent = nf(latest.termPremium) + " pp";
+  $("stocks").textContent = nf(latest.sp500);
 
-  const lastYield = marketData.yields.at(-1);
-  const lastPremium = marketData.premium.at(-1);
+  drawLine("durationChart", rows, "duration", "#75dccb");
+  drawLine("premiumChart", rows, "termPremium", "#f3bd76");
+  drawLine("yieldChart", rows, "yield10", "#7caaff");
+  drawLine("stocksChart", rows, "sp500", "#d4a4ff");
 
-  document.getElementById("yield").textContent =
-    lastYield.value.toFixed(2)+"%";
-  document.getElementById("duration").textContent =
-    modifiedDuration(lastYield.value).toFixed(2);
-  document.getElementById("premium").textContent =
-    lastPremium.value.toFixed(2)+"%";
-  document.getElementById("premiumSource").textContent = premiumModel;
-  document.getElementById("updated").textContent =
-    "Latest yield: "+lastYield.date+
-    " | Latest term premium: "+lastPremium.date+
-    " | Model: "+premiumModel;
+  const end = rows[rows.length - 1];
+  const start = rows[Math.max(0, rows.length - 13)];
 
-  calculateAnalysis();
+  const bp = (end.termPremium - start.termPremium) * 100;
+  const ret = (end.sp500 / start.sp500 - 1) * 100;
+
+  const bpVerb = bp >= 0 ? "increased" : "decreased";
+  const retVerb = ret >= 0 ? "increased" : "decreased";
+
+  $("analysis").textContent =
+    `From ${start.month} to ${end.month}, the 10-year ACM ` +
+    `term premium ${bpVerb} by ${nf(Math.abs(bp), 1)} basis ` +
+    `points (from ${nf(start.termPremium, 3)} to ` +
+    `${nf(end.termPremium, 3)} percentage points). ` +
+    `Over the same period, the S&P 500 ${retVerb} by ` +
+    `${nf(Math.abs(ret), 2)}% (from ${nf(start.sp500)} ` +
+    `to ${nf(end.sp500)}). ` +
+    `These figures describe observed changes in the bond ` +
+    `and equity markets, without implying causation.`;
+
+  $("window").textContent =
+    `Observation window: ${start.month} to ${end.month} | ` +
+    `${rows.length} monthly observations | ` +
+    `Latest month: ${end.month}`;
 }
 
 async function loadDashboard() {
-  const status = document.getElementById("status");
-  status.textContent = "Loading data from public financial sources...";
+  const status = $("status");
+
+  status.style.color = "#f3bd76";
+  status.textContent = "Loading local historical data...";
+
   try {
-    const results = await Promise.all([
-      fred("DGS10"),
-      getPremium(),
-      fred("SP500")
-    ]);
-    marketData = {
-      yields:results[0],
-      premium:results[1],
-      stocks:results[2]
-    };
-    if(results.some(x => x.length < 24))
-      throw new Error("Historical dataset is incomplete");
+    const response = await fetch(
+      "./data.json?v=" + Date.now(),
+      { cache: "no-store" }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    allRows = parseRows(data);
 
     render();
-    status.textContent = "Historical market data loaded successfully.";
-    status.style.color = "#63d5c5";
-  } catch(error) {
-    console.error(error);
+
+    $("updated").textContent =
+      "Dataset last updated (UTC): " +
+      (data.updatedUTC || "not specified");
+
+    status.style.color = "#75dccb";
     status.textContent =
-      "Data could not be loaded. Try Refresh Data. " +
-      "The public data provider or CORS proxy may be unavailable.";
+      `Loaded ${allRows.length} monthly observations ` +
+      `(${allRows[0].month} to ` +
+      `${allRows[allRows.length - 1].month}).`;
+
+  } catch (error) {
+    console.error(error);
     status.style.color = "#ff9c9c";
+    status.textContent =
+      "Unable to load local data: " + error.message;
   }
 }
 
-document.getElementById("period").addEventListener("change",()=>{
-  if(marketData) render();
-});
+$("period").addEventListener("change", render);
+$("refresh").addEventListener("click", loadDashboard);
+
 loadDashboard();
 </script>
+
 </body>
 </html>
