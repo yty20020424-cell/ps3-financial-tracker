@@ -18,15 +18,16 @@ def download(url):
 
 def fred(series):
     sources = {
-        "DGS10": (
-            "https://datahub.io/calcfi/"
-            "calcfi-10-year-treasury/_r/-/data.csv"
-        ),
-        "SP500": (
-            "https://datahub.io/core/s-and-p-500/"
-            "_r/-/archive/fred_sp500.csv"
-        )
-    }
+    "DGS10": (
+        "https://calcfi.app/api/rates/"
+        "10-year-treasury?format=csv"
+    ),
+    "SP500": (
+        "https://raw.githubusercontent.com/"
+        "datasets/s-and-p-500/main/"
+        "archive/fred_sp500.csv"
+    )
+}
 
     if series not in sources:
         raise ValueError(f"Unknown series: {series}")
@@ -36,7 +37,15 @@ def fred(series):
     response = S.get(sources[series], timeout=45)
     response.raise_for_status()
 
-    df = pd.read_csv(io.BytesIO(response.content))
+    content = response.content
+    first_line = content.splitlines()[0].decode(
+    "utf-8-sig", errors="replace")
+    print(f"{series} CSV header: {first_line}")
+    if "date" not in first_line.lower() or "," not in first_line:
+    raise ValueError(
+        f"{series} returned unexpected data: {first_line[:150]}"
+    )
+    df = pd.read_csv(io.BytesIO(content))
 
     df.columns = [
         str(c).strip().lower() for c in df.columns
