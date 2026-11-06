@@ -17,12 +17,59 @@ def download(url):
     return response.content
 
 def fred(series):
-    url = f'https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}&cosd={START}'
-    df = pd.read_csv(io.BytesIO(download(url)))
-    df.columns = ['date', 'value']
-    df['date'] = pd.to_datetime(df['date'], errors='coerce')
-    df['value'] = pd.to_numeric(df['value'], errors='coerce')
-    return df.dropna().sort_values('date')
+    import time
+
+    # Primary source: DBnomics mirror of FRED
+    url = (
+        f"https://api.db.nomics.world/v22/series/"
+        f"FRED/{series}?observations=1"
+    )
+
+    try:
+        response = S.get(url, timeout=30)
+        response.raise_for_status()
+        docs = response.json()["series"]["docs"]
+        if not docs:
+            raise ValueError("No observations returned")
+
+        data = docs[0]
+        df = pd.DataFrame({
+            "date": data["period"],
+            "value": data["value"]
+        })
+
+    except (requests.RequestException, KeyError,
+            IndexError, ValueError) as exc:
+        print(f"DBnomics unavailable for {series}: {exc}")
+        print("Trying FRED directly...")
+
+        url = (
+            "https://fred.stlouisfed.org/graph/"
+            f"fredgraph.csv?id={series}&cosd={START}"
+        )
+
+        for attempt in range(3):
+            try:
+                response = S.get(url, timeout=30)
+                response.raise_for_status()
+                df = pd.read_csv(io.BytesIO(response.content))
+                df.columns = ["date", "value"]
+                break
+            except requests.RequestException:
+                if attempt == 2:
+                    raise
+                time.sleep(3)
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+
+    df = df.dropna().sort_values("date")
+    df = df[df["date"] >= pd.Timestamp(START)]
+
+    if df.empty:
+        raise ValueError(f"No valid data for {series}")
+
+    return df
 
 def acm():
     url = 'https://www.newyorkfed.org/medialibrary/media/research/data_indicators/ACMTermPremium.xls'
