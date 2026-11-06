@@ -17,11 +17,8 @@ def download(url):
     return response.content
 
 def fred(series):
-    sources = {
-    "DGS10": (
-        "https://calcfi.app/api/rates/"
-        "10-year-treasury?format=csv"
-    ),
+    sources = {"DGS10": (
+    "https://capisaga.com/indicators/dgs10/csv"),
     "SP500": (
         "https://raw.githubusercontent.com/"
         "datasets/s-and-p-500/main/"
