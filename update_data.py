@@ -38,13 +38,11 @@ def fred(series):
     response.raise_for_status()
 
     content = response.content
-    first_line = content.splitlines()[0].decode(
-    "utf-8-sig", errors="replace")
+    first_line = content.splitlines()[0].decode("utf-8-sig", errors="replace")
     print(f"{series} CSV header: {first_line}")
+    
     if "date" not in first_line.lower() or "," not in first_line:
-    raise ValueError(
-        f"{series} returned unexpected data: {first_line[:150]}"
-    )
+        raise ValueError(f"{series} returned unexpected data: {first_line[:150]}")
     df = pd.read_csv(io.BytesIO(content))
 
     df.columns = [
