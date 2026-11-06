@@ -17,57 +17,65 @@ def download(url):
     return response.content
 
 def fred(series):
-    import time
+    sources = {
+        "DGS10": (
+            "https://datahub.io/calcfi/"
+            "calcfi-10-year-treasury/_r/-/data.csv"
+        ),
+        "SP500": (
+            "https://datahub.io/core/s-and-p-500/"
+            "_r/-/archive/fred_sp500.csv"
+        )
+    }
 
-    # Primary source: DBnomics mirror of FRED
-    url = (
-        f"https://api.db.nomics.world/v22/series/"
-        f"FRED/{series}?observations=1"
+    if series not in sources:
+        raise ValueError(f"Unknown series: {series}")
+
+    print(f"Downloading {series} from DataHub")
+
+    response = S.get(sources[series], timeout=45)
+    response.raise_for_status()
+
+    df = pd.read_csv(io.BytesIO(response.content))
+
+    df.columns = [
+        str(c).strip().lower() for c in df.columns
+    ]
+
+    date_col = next(
+        (c for c in df.columns if c in
+         ("date", "observation_date")),
+        None
     )
 
-    try:
-        response = S.get(url, timeout=30)
-        response.raise_for_status()
-        docs = response.json()["series"]["docs"]
-        if not docs:
-            raise ValueError("No observations returned")
+    value_col = next(
+        (c for c in df.columns if c in
+         ("value", series.lower(), "close")),
+        None
+    )
 
-        data = docs[0]
-        df = pd.DataFrame({
-            "date": data["period"],
-            "value": data["value"]
-        })
-
-    except (requests.RequestException, KeyError,
-            IndexError, ValueError) as exc:
-        print(f"DBnomics unavailable for {series}: {exc}")
-        print("Trying FRED directly...")
-
-        url = (
-            "https://fred.stlouisfed.org/graph/"
-            f"fredgraph.csv?id={series}&cosd={START}"
+    if date_col is None or value_col is None:
+        raise ValueError(
+            f"Unexpected columns for {series}: {list(df.columns)}"
         )
 
-        for attempt in range(3):
-            try:
-                response = S.get(url, timeout=30)
-                response.raise_for_status()
-                df = pd.read_csv(io.BytesIO(response.content))
-                df.columns = ["date", "value"]
-                break
-            except requests.RequestException:
-                if attempt == 2:
-                    raise
-                time.sleep(3)
+    df = df[[date_col, value_col]].copy()
+    df.columns = ["date", "value"]
 
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+    df["date"] = pd.to_datetime(
+        df["date"], errors="coerce"
+    )
+    df["value"] = pd.to_numeric(
+        df["value"], errors="coerce"
+    )
 
     df = df.dropna().sort_values("date")
     df = df[df["date"] >= pd.Timestamp(START)]
 
     if df.empty:
-        raise ValueError(f"No valid data for {series}")
+        raise ValueError(f"No data for {series}")
+
+    print(f"Loaded {len(df)} observations for {series}")
 
     return df
 
